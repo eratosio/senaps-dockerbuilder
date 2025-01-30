@@ -1,0 +1,25 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+dependencies = [
+  "docker",
+]
+name = "eratos-docker"
+description = ""
+requires-python = ">= 3.10"
+dynamic = ["version"]
+
+[project.scripts]
+senaps-dockerbuild="eratos_docker.build:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eratos_docker"]
+
+
+
+[tool.hatch.version]
+path = "src/eratos_docker/__init__.py"
+
