@@ -1,0 +1,51 @@
+{
+  "baseImage": "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc",
+  "organisationId": "eratos-internal",
+  "groupIds": [],
+  "entrypoint": "entry.py",
+  "dependencies": [
+    {
+      "name": "pytest",
+      "provider": "PIP"
+    },
+    {
+      "name": "pytest-dependency",
+      "provider": "PIP"
+    },
+    {
+      "name": "pytest-html",
+      "provider": "PIP"
+    }
+  ],
+  "models": [
+    {
+      "id": "eratos.test.model",
+      "name": "blah blah",
+      "version": "0.0.1",
+      "description": "blah blah",
+      "ports": [
+        {
+          "portName": "input0",
+          "required": false,
+          "type": "document",
+          "description": "list of files/methods to run under pytest",
+          "direction": "input"
+        },
+        {
+          "portName": "input1",
+          "required": false,
+          "type": "document",
+          "description": "options to add to pytest",
+          "direction": "input"
+        },
+        {
+          "portName": "output",
+          "required": false,
+          "type": "document",
+          "description": "The test results",
+          "direction": "output"
+        }
+      ]
+    }
+  ]
+}

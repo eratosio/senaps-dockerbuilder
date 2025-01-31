@@ -10,6 +10,7 @@ import platform
 import argparse
 import shutil
 import sys
+from colorama import Fore, Style
 
 BASE_IMAGE_MAP = {
     "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc": "senaps-prod/base-images/python3.10-base"
@@ -136,7 +137,9 @@ def build(path: str, repo_name: Optional[str] = None):
     print(f" - {dockerfile_path }")
     print("\nBuilding image . Docker output follows...")
     print(
-        "\033[1;30m(Note: lines preceded by \033[36m>\033[30m denote STDOUT output from Docker, and lines preceded by \033[31m!\033[30m denote STDERR output.)\033[0;0m\n"
+        f"{Style.BRIGHT}{Fore.BLACK}(Note: lines preceded by "
+        f"{Fore.CYAN}>{Fore.BLACK} denote STDOUT output from Docker, and lines preceded by "
+        f"{Fore.RED}!{Fore.BLACK} denote STDERR output.){Style.RESET_ALL}\n"
     )
 
     for line in docker_client.build(

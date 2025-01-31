@@ -2,6 +2,7 @@ import docker
 import requests
 import json
 import time
+import pprint
 from .mock_analysis import MockAnalysisService
 from .utils import get_registry_entry
 from uuid import uuid4
@@ -83,10 +84,13 @@ class ModelRunner:
         if docs is None:
             docs = {}
         ports = {}
+        doc_map = {}
         for port_config in model["ports"]:
-            port_name = port_config.get("port_name")
+            port_name = port_config.get("portName")
             input_doc = docs.get(port_name, "")
-            ports[port_name] = {"document": input_doc, "documentId": str(uuid4())}
+            mockid = str(uuid4())
+            doc_map[mockid] = port_name
+            ports[port_name] = {"document": input_doc, "documentId": mockid}
 
         job_request = {
             "modelId": id,
@@ -94,6 +98,9 @@ class ModelRunner:
             "analysisServicesConfiguration": {
                 "url": "http://localhost:18080/api/analysis"
             },
+            # TODO - allow the user to interact with other real/mock services by providing url/apikey
+            # e.g
+            # {'sensorCloudConfiguration': {'url': 'https://staging.senaps.eratos.com/api/sensor/v2', 'apiKey': '...'}
         }
         host_config = self.docker_client.create_host_config(
             network_mode="host",
@@ -134,6 +141,9 @@ class ModelRunner:
                     time.sleep(1.0)
 
             # Start the model.
+            print("Submitting job request:")
+            pprint.pprint(job_request, indent=4)
+
             requests.post(model_url, json=job_request).raise_for_status()
 
             # Poll until model completes.
@@ -171,14 +181,29 @@ class ModelRunner:
             )
             raise
         finally:
-            print("Docker log follows:")
+            border = "=" * 40
+            print(
+                f"{Style.BRIGHT}{border} {Fore.CYAN}DOCKER LOG{Fore.BLACK} {border}{Style.RESET_ALL}"
+            )
+            docker_logs = self.docker_client.logs(container_id).decode("utf-8")
+            for msg in docker_logs.split("\n"):
+                print(f"{Fore.CYAN}>{Style.RESET_ALL} {msg}")
 
-            print(self.docker_client.logs(container_id).decode("utf-8"))
+            print(
+                f"{Style.BRIGHT}{border} {Fore.CYAN}DOCKER LOG{Fore.BLACK} {border}{Style.RESET_ALL}"
+            )
 
         # Wait 10 seconds for container to exit, then clean up.
+        print("Killing container")
         self.docker_client.stop(container_id, timeout=10)
 
         # Force kill if the container hasn't died naturally.
         self.docker_client.remove_container(container_id, v=True, force=True)
+        result_docs = {doc_map[id]: val for id, val in httpd.documents.items()}
+        # puts input docs in
+        result_docs.update(docs)
+
+        print("Document state:")
+        pprint.pprint(result_docs, indent=4)
 
         return status
