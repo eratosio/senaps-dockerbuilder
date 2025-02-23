@@ -109,7 +109,7 @@ def build(path: str, repo_name: Optional[str] = None):
             case "APT":
                 apt_deps.append(entry["name"])
             case _:
-                raise ValueError(f"Invalid dependency provider {entry["provider"]}")
+                raise ValueError(f"Invalid dependency provider {entry['provider']}")
 
     print("Building dockerfile")
     with open(dockerfile_path, "w") as f:
@@ -131,10 +131,11 @@ def build(path: str, repo_name: Optional[str] = None):
     # by default, name the repository as the following
     if repo_name is None:
         repo_name = f"{Path.cwd().stem}/{dockerfile_name}"
+        repo_name = repo_name.lower()
 
     register_model(path.resolve().as_posix(), repo_name, manifest)
 
-    print(f" - {dockerfile_path }")
+    print(f" - {dockerfile_path}")
     print("\nBuilding image . Docker output follows...")
     print(
         f"{Style.BRIGHT}{Fore.BLACK}(Note: lines preceded by "
@@ -146,7 +147,7 @@ def build(path: str, repo_name: Optional[str] = None):
         path=".",
         dockerfile=dockerfile_path.as_posix(),
         platform="linux/amd64",
-        tag=repo_name,
+        tag=f"{repo_name}:latest",
     ):
         try:
             print_lines(get_client_output_lines(line))
