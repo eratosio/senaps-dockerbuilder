@@ -13,7 +13,8 @@ import sys
 from colorama import Fore, Style
 
 BASE_IMAGE_MAP = {
-    "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc": "senaps-prod/base-images/python3.10-base"
+    "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc": "senaps-prod/base-images/python3.10-base",
+    "B415DE8D-4886-4E43-B33A-692DB431C99E": "base-images/python:3.8",
 }
 URI_BASE = "public.ecr.aws/eratosio"
 
