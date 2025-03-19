@@ -24,6 +24,7 @@ def entry(context):
     print(f"Testing base image {base_image}")
     print(f"Running on Python version {sys.version}")
     print("Python packages installed:")
+    print("blah blah")
     list_packages()
 
     # check senaps logging working correctly
@@ -39,6 +40,6 @@ def entry(context):
     y = json.loads(ports.input1.value)
     print(f"Input 1 value : {y}")
 
-    print(f"Sum : {x+y}")
+    print(f"Sum : {x + y}")
 
     ports.output.value = str(x + y)

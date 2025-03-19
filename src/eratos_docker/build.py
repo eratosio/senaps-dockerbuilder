@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Optional
-from .utils import register_model
+from typing import Optional, Annotated
+from .utils import register_model, get_registry_entry
 import tarfile
 import zipfile
 import json
@@ -10,13 +10,17 @@ import platform
 import argparse
 import shutil
 import sys
+import tempfile
+import typer
 from colorama import Fore, Style
+from io import BytesIO
 
 BASE_IMAGE_MAP = {
     "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc": "senaps-prod/base-images/python3.10-base",
     "B415DE8D-4886-4E43-B33A-692DB431C99E": "base-images/python:3.8",
 }
 URI_BASE = "public.ecr.aws/eratosio"
+app = typer.Typer()
 
 
 def get_docker_base_url():
@@ -69,12 +73,15 @@ def extract_archive(path: Path, dst: Path):
             zip_ref.extractall(path=dst)
 
 
-def build(path: str, repo_name: Optional[str] = None):
+@app.command("build")
+def build(
+    path: Path,
+    tag: Annotated[str, typer.Option(help="tag for image, else latest")] = "latest",
+    repo_name: Annotated[Optional[str], typer.Option(help="repo name of image")] = None,
+):
     docker_client = docker.APIClient(base_url=get_docker_base_url())
     os.makedirs("docker", exist_ok=True)
     dockerfile_dir = Path("docker")
-
-    path = Path(path)
 
     if path.suffix in [".gz", ".tar.gz", ".zip"]:
         filename = path.stem
@@ -148,7 +155,7 @@ def build(path: str, repo_name: Optional[str] = None):
         path=".",
         dockerfile=dockerfile_path.as_posix(),
         platform="linux/amd64",
-        tag=f"{repo_name}:latest",
+        tag=f"{repo_name}:{tag}",
     ):
         try:
             print_lines(get_client_output_lines(line))
@@ -158,9 +165,44 @@ def build(path: str, repo_name: Optional[str] = None):
     return 0
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", type=str)
-    args = parser.parse_args()
+@app.command("recompile")
+def rebuild(path: Path, from_tag: str = "latest", to_tag: str = "latest"):
+    docker_client = docker.APIClient(base_url=get_docker_base_url())
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist!")
+    model_cfg = get_registry_entry(path.resolve().as_posix())
+    image_name = model_cfg["image"]
+    with open(path / "manifest.json", "r") as f:
+        manifest = json.load(f)
+    entrypoint = manifest["entrypoint"]
+    dockerlines = [
+        f"FROM {image_name}:{from_tag}\n",
+        f"COPY {path} /opt/model/\n",
+        "RUN python3 -OO -m compileall /opt/model/\n",
+        "WORKDIR /opt/model\n",
+        f"ENTRYPOINT python3 -m as_models host /opt/model/{entrypoint}\n",
+    ]
 
-    build(args.path)
+    with tempfile.NamedTemporaryFile(suffix=".dockerfile", dir=".") as dockerfile:
+        dockerfile.writelines([x.encode("utf-8") for x in dockerlines])
+        # otherwise race condition occurs where file is not written to fast enough
+        dockerfile.flush()
+        print("\nBuilding image . Docker output follows...")
+        print(
+            f"{Style.BRIGHT}{Fore.BLACK}(Note: lines preceded by "
+            f"{Fore.CYAN}>{Fore.BLACK} denote STDOUT output from Docker, and lines preceded by "
+            f"{Fore.RED}!{Fore.BLACK} denote STDERR output.){Style.RESET_ALL}\n"
+        )
+
+        for line in docker_client.build(
+            path=".",
+            dockerfile=dockerfile.name,
+            platform="linux/amd64",
+            tag=f"{image_name}:{to_tag}",
+        ):
+            try:
+                print_lines(get_client_output_lines(line))
+            except Exception as e:
+                print(line)
+
+        pass
