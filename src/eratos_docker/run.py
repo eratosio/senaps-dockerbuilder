@@ -2,6 +2,7 @@ import docker
 import requests
 import json
 import time
+import platform
 import pprint
 from .mock_analysis import MockAnalysisService
 from .utils import get_registry_entry
@@ -96,14 +97,16 @@ class ModelRunner:
             "modelId": id,
             "ports": ports,
             "analysisServicesConfiguration": {
-                "url": "http://localhost:18080/api/analysis"
+                "url": "host.docker.internal:18080/api/analysis"
             },
             # TODO - allow the user to interact with other real/mock services by providing url/apikey
             # e.g
             # {'sensorCloudConfiguration': {'url': 'https://staging.senaps.eratos.com/api/sensor/v2', 'apiKey': '...'}
         }
         host_config = self.docker_client.create_host_config(
-            network_mode="host",
+            network_mode="bridge",
+            port_bindings={28080: 28080},
+            extra_hosts={"host.docker.internal": "host-gateway"},
         )
 
         container = self.docker_client.create_container(
@@ -193,12 +196,14 @@ class ModelRunner:
                 f"{Style.BRIGHT}{border} {Fore.CYAN}DOCKER LOG{Fore.BLACK} {border}{Style.RESET_ALL}"
             )
 
-        # Wait 10 seconds for container to exit, then clean up.
-        print("Killing container")
-        self.docker_client.stop(container_id, timeout=10)
+            # Wait 10 seconds for container to exit, then clean up.
+            print("Killing container")
+            self.docker_client.stop(container_id, timeout=10)
+            print("Removing container")
 
-        # Force kill if the container hasn't died naturally.
-        self.docker_client.remove_container(container_id, v=True, force=True)
+            # Force kill if the container hasn't died naturally.
+            self.docker_client.remove_container(container_id, v=True, force=True)
+
         result_docs = {doc_map[id]: val for id, val in httpd.documents.items()}
         # puts input docs in
         result_docs.update(docs)
