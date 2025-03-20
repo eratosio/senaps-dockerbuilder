@@ -4,7 +4,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-dependencies = ["docker", "typer"]
+dependencies = [
+  "docker",
+  "colorama==0.4.6",
+  "typer"
+]
 name = "eratos-docker"
 description = ""
 requires-python = ">= 3.10"

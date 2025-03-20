@@ -91,7 +91,7 @@ class ModelRunner:
             input_doc = docs.get(port_name, "")
             mockid = str(uuid4())
             doc_map[mockid] = port_name
-            ports[port_name] = {"document": input_doc, "documentId": mockid}
+            ports[port_name] = {"document": json.dumps(input_doc), "documentId": mockid}
 
         job_request = {
             "modelId": id,
