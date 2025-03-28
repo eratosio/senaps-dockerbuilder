@@ -100,7 +100,7 @@ class ModelRunner:
             "modelId": id,
             "ports": ports,
             "analysisServicesConfiguration": {
-                "url": f"host.docker.internal:{analysis_service_port}/api/analysis"
+                "url": f"http://host.docker.internal:{analysis_service_port}/api/analysis"
             },
             # TODO - allow the user to interact with other real/mock services by providing url/apikey
             # e.g
