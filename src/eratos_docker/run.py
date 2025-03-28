@@ -127,10 +127,6 @@ class ModelRunner:
         print("Model container running: {}".format(container_id))
 
         model_url = f"http://localhost:{model_port}/"
-        as_service_daemon = multiprocessing.Process(
-            target=httpd.serve_forever, daemon=True
-        )
-        as_service_daemon.start()
 
         status = None
         try:
@@ -210,7 +206,6 @@ class ModelRunner:
 
             # Force kill if the container hasn't died naturally.
             self.docker_client.remove_container(container_id, v=True, force=True)
-            as_service_daemon.kill()
 
         result_docs = {doc_map[id]: val for id, val in httpd.documents.items()}
         # puts input docs in
