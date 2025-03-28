@@ -40,9 +40,9 @@ class DocumentUploadHandler(BaseHTTPRequestHandler):
 
 
 class MockAnalysisService(HTTPServer):
-    def __init__(self):
+    def __init__(self, port: int = 18080):
         super(MockAnalysisService, self).__init__(
-            ("localhost", 18080), DocumentUploadHandler
+            ("0.0.0.0", port), DocumentUploadHandler
         )
 
     def handle_timeout(self):

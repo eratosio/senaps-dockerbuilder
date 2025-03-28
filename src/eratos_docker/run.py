@@ -4,6 +4,7 @@ import json
 import time
 import platform
 import pprint
+import multiprocessing
 from .mock_analysis import MockAnalysisService
 from .utils import get_registry_entry
 from uuid import uuid4
@@ -67,9 +68,11 @@ class ModelRunner:
             )
             return False
 
-    def run_model(self, docs=None, id=None, model_port=28080):
+    def run_model(
+        self, docs=None, id=None, model_port=28080, analysis_service_port=18080
+    ):
         # Spin up a mock Analysis Service to capture uploaded documents.
-        httpd = MockAnalysisService()
+        httpd = MockAnalysisService(analysis_service_port)
         httpd.documents = {}
         httpd.timeout = 0.1
         # build context object
@@ -97,7 +100,7 @@ class ModelRunner:
             "modelId": id,
             "ports": ports,
             "analysisServicesConfiguration": {
-                "url": "host.docker.internal:18080/api/analysis"
+                "url": f"host.docker.internal:{analysis_service_port}/api/analysis"
             },
             # TODO - allow the user to interact with other real/mock services by providing url/apikey
             # e.g
@@ -105,7 +108,7 @@ class ModelRunner:
         }
         host_config = self.docker_client.create_host_config(
             network_mode="bridge",
-            port_bindings={28080: 28080},
+            port_bindings={model_port: model_port},
             extra_hosts={"host.docker.internal": "host-gateway"},
         )
 
@@ -113,7 +116,7 @@ class ModelRunner:
             self.image_name,
             host_config=host_config,
             detach=True,
-            ports=[28080],
+            ports=[model_port],
             environment={"MODEL_PORT": f"{model_port}", "MODEL_HOST": "0.0.0.0"},
             tty=True,
             platform="linux/amd64",
@@ -124,6 +127,10 @@ class ModelRunner:
         print("Model container running: {}".format(container_id))
 
         model_url = f"http://localhost:{model_port}/"
+        as_service_daemon = multiprocessing.Process(
+            target=httpd.serve_forever, daemon=True
+        )
+        as_service_daemon.start()
 
         status = None
         try:
@@ -203,6 +210,7 @@ class ModelRunner:
 
             # Force kill if the container hasn't died naturally.
             self.docker_client.remove_container(container_id, v=True, force=True)
+            as_service_daemon.kill()
 
         result_docs = {doc_map[id]: val for id, val in httpd.documents.items()}
         # puts input docs in
@@ -210,5 +218,4 @@ class ModelRunner:
 
         print("Document state:")
         pprint.pprint(result_docs, indent=4)
-
-        return status
+        return result_docs
