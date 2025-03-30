@@ -129,6 +129,7 @@ class ModelRunner:
         model_url = f"http://localhost:{model_port}/"
 
         status = None
+        model_errors = None
         try:
             start_attempts = 0
             while True:
@@ -170,7 +171,11 @@ class ModelRunner:
             except requests.exceptions.RequestException:
                 pass
 
-            print("Model complete. Cleaning up...")
+            if status.get("state") == "FAILED":
+                model_errors = status.get("exception")
+                print(f"Model failed with exception {model_errors['msg']}")
+            else:
+                print("Model complete. Cleaning up...")
 
             # Terminate the model.
             requests.post(
@@ -213,4 +218,10 @@ class ModelRunner:
 
         print("Document state:")
         pprint.pprint(result_docs, indent=4)
-        return result_docs
+        if model_errors:
+            print("Errors:")
+            pprint.pprint(model_errors, indent=4)
+        else:
+            print("Errors: none")
+
+        return result_docs, model_errors
