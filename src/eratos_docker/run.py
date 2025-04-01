@@ -43,7 +43,11 @@ def format_status(status):
 
 
 class ModelRunner:
-    def __init__(self, model_path: str | Path, docker_client: docker.APIClient):
+    def __init__(
+        self,
+        model_path: Optional[str | Path],
+        docker_client: docker.APIClient,
+    ):
         self.model_path = model_path
         self.docker_client = docker_client
 
@@ -73,6 +77,8 @@ class ModelRunner:
         self,
         initial_ports: Optional[dict[str, Any]] = None,
         id: Optional[str] = None,
+        bind_mounts: Optional[dict[str, Any]] = None,
+        bind_model_dir: bool = False,
         model_port: int = 28080,
         analysis_service_port: int = 18080,
         senaps_host: Optional[str] = None,
@@ -133,10 +139,30 @@ class ModelRunner:
 
         job_request["ports"] = ports
 
+        if bind_model_dir:
+            if self.model_path is None:
+                raise ValueError("Runner does not have a model path configured")
+
+            if bind_mounts is None:
+                bind_mounts = {self.model_path.resolve().as_posix(): "/opt/model"}
+            else:
+                bind_mounts.update({self.model_path.resolve().as_posix(): "/opt/model"})
+
+        if bind_mounts is not None:
+            binds = {
+                host_dir: {"bind": container_dir, "mode": "rw"}
+                for host_dir, container_dir in bind_mounts.items()
+            }
+            volumes = list(bind_mounts.values())
+        else:
+            binds = None
+            volumes = []
+
         host_config = self.docker_client.create_host_config(
             network_mode="bridge",
             port_bindings={model_port: model_port},
             extra_hosts={"host.docker.internal": "host-gateway"},
+            binds=binds,
         )
 
         container = self.docker_client.create_container(
@@ -144,6 +170,7 @@ class ModelRunner:
             host_config=host_config,
             detach=True,
             ports=[model_port],
+            volumes=volumes,
             environment={"MODEL_PORT": f"{model_port}", "MODEL_HOST": "0.0.0.0"},
             tty=True,
             platform="linux/amd64",
