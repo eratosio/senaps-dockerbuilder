@@ -11,6 +11,7 @@ from uuid import uuid4
 from pathlib import Path
 from docker import APIClient
 from colorama import Fore, Style
+from typing import Any, Optional
 
 COLOURS = {
     "DEBUG": Fore.BLUE,
@@ -69,7 +70,13 @@ class ModelRunner:
             return False
 
     def run_model(
-        self, docs=None, id=None, model_port=28080, analysis_service_port=18080
+        self,
+        initial_ports: Optional[dict[str, Any]] = None,
+        id: Optional[str] = None,
+        model_port: int = 28080,
+        analysis_service_port: int = 18080,
+        senaps_host: Optional[str] = None,
+        senaps_api_key: Optional[str] = None,
     ):
         # Spin up a mock Analysis Service to capture uploaded documents.
         httpd = MockAnalysisService(analysis_service_port)
@@ -85,27 +92,47 @@ class ModelRunner:
                 raise KeyError("Invalid model id")
         model = self.models[id]
 
-        if docs is None:
-            docs = {}
+        job_request = {
+            "modelId": id,
+            "analysisServicesConfiguration": {
+                "url": f"http://host.docker.internal:{analysis_service_port}/api/analysis"
+            },
+        }
+
+        if senaps_host:
+            if not senaps_api_key:
+                raise ValueError("Senaps host specified but no API key was provided")
+
+            job_request["sensorCloudConfiguration"] = {
+                "url": f"{senaps_host}/api/sensor/v2",
+                "apiKey": senaps_api_key,
+            }
+
+        if initial_ports is None:
+            initial_ports = {}
         ports = {}
         doc_map = {}
         for port_config in model["ports"]:
             port_name = port_config.get("portName")
-            input_doc = docs.get(port_name, "")
+            input_val = initial_ports.get(port_name, "")
             mockid = str(uuid4())
             doc_map[mockid] = port_name
-            ports[port_name] = {"document": json.dumps(input_doc), "documentId": mockid}
+            if port_config["type"] == "stream":
+                if "sensorCloudConfiguration" not in job_request:
+                    raise ValueError(
+                        "Stream port specified but not sensor client configuration"
+                    )
+                if not isinstance(input_val, str):
+                    raise ValueError("Stream id should be a string")
+                ports[port_name] = {"streamId": input_val}
+            else:
+                ports[port_name] = {
+                    "document": json.dumps(input_val),
+                    "documentId": mockid,
+                }
 
-        job_request = {
-            "modelId": id,
-            "ports": ports,
-            "analysisServicesConfiguration": {
-                "url": f"http://host.docker.internal:{analysis_service_port}/api/analysis"
-            },
-            # TODO - allow the user to interact with other real/mock services by providing url/apikey
-            # e.g
-            # {'sensorCloudConfiguration': {'url': 'https://staging.senaps.eratos.com/api/sensor/v2', 'apiKey': '...'}
-        }
+        job_request["ports"] = ports
+
         host_config = self.docker_client.create_host_config(
             network_mode="bridge",
             port_bindings={model_port: model_port},
@@ -214,7 +241,7 @@ class ModelRunner:
 
         result_docs = {doc_map[id]: val for id, val in httpd.documents.items()}
         # puts input docs in
-        result_docs.update(docs)
+        result_docs.update(initial_ports)
 
         print("Document state:")
         pprint.pprint(result_docs, indent=4)

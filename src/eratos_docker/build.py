@@ -127,9 +127,19 @@ def build(
                 f"# Automatically generated docker file for {path.as_posix()} on\n",
                 f"FROM {base_image_uri}\n",
                 f"COPY {model_path} /opt/model/\n",
+            ]
+        )
+        if len(apt_deps) > 0:
+            f.write(
+                f"RUN apt-get -y -q update && DEBIAN_FRONTEND=noninteractive apt-get -y -q install {' '.join(apt_deps)}\n"
+            )
+
+        if len(pip_deps) > 0:
+            f.write(f"RUN pip install --no-cache-dir {' '.join(pip_deps)}\n")
+
+        f.writelines(
+            [
                 # Install dependencies
-                f"RUN apt-get -y -q update && DEBIAN_FRONTEND=noninteractive apt-get -y -q install {' '.join(apt_deps)}\n",
-                f"RUN pip install --no-cache-dir {' '.join(pip_deps)}\n",
                 "RUN python3 -OO -m compileall /opt/model/\n",
                 "WORKDIR /opt/model\n",
                 f"ENTRYPOINT python3 -m as_models host /opt/model/{entrypoint}\n",

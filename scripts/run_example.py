@@ -6,4 +6,4 @@ runner = ModelRunner(
     "examples/simple",
     docker_client,
 )
-runner.run_model(docs={"input0": "1", "input1": "2"})
+runner.run_model(initial_ports={"input0": "1", "input1": "2"})

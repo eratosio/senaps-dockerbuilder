@@ -1,0 +1,24 @@
+{
+  "baseImage": "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc",
+  "organisationId": "eratos-internal",
+  "groupIds": [],
+  "entrypoint": "entry.py",
+  "dependencies": [],
+  "models": [
+    {
+      "id": "eratos.test.model",
+      "name": "blah blah",
+      "version": "0.0.1",
+      "description": "blah blah",
+      "ports": [
+        {
+          "portName": "input_stream",
+          "required": true,
+          "type": "stream",
+          "description": "a stream",
+          "direction": "input"
+        }
+      ]
+    }
+  ]
+}
