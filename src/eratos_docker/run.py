@@ -82,6 +82,7 @@ class ModelRunner:
         model_port: int = 28080,
         analysis_service_port: int = 18080,
         senaps_host: Optional[str] = None,
+        expose_ports: Optional[list[int]] = None,
         senaps_api_key: Optional[str] = None,
     ):
         # Spin up a mock Analysis Service to capture uploaded documents.
@@ -133,7 +134,9 @@ class ModelRunner:
                 ports[port_name] = {"streamId": input_val}
             else:
                 ports[port_name] = {
-                    "document": json.dumps(input_val),
+                    "document": json.dumps(input_val)
+                    if not isinstance(input_val, str)
+                    else input_val,
                     "documentId": mockid,
                 }
 
@@ -165,11 +168,16 @@ class ModelRunner:
             binds=binds,
         )
 
+        if expose_ports is None:
+            ports = [model_port]
+        else:
+            ports = [model_port] + expose_ports
+
         container = self.docker_client.create_container(
             self.image_name,
             host_config=host_config,
             detach=True,
-            ports=[model_port],
+            ports=ports,
             volumes=volumes,
             environment={"MODEL_PORT": f"{model_port}", "MODEL_HOST": "0.0.0.0"},
             tty=True,
