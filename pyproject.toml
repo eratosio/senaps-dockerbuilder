@@ -10,6 +10,7 @@ dependencies = [
   "typer"
 ]
 name = "eratos-docker"
+authors = [{ name = "Steven Nguyen", email = "steven.nguyen@eratos.com" }]
 description = ""
 requires-python = ">= 3.10"
 dynamic = ["version"]
