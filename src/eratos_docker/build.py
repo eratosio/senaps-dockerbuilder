@@ -18,6 +18,8 @@ from io import BytesIO
 BASE_IMAGE_MAP = {
     "6cd2f899-b5f1-444b-afbe-ee4a4eaec1bc": "senaps-prod/base-images/python3.10-base",
     "B415DE8D-4886-4E43-B33A-692DB431C99E": "base-images/python:3.8",
+    "47861a5e-6180-4913-b77a-0b8dd30f8b46": "base-images/r4-geospatial",
+    "88bb0ad8-c24f-405c-890f-77a09a75926f": "base-images/r4",
 }
 URI_BASE = "public.ecr.aws/eratosio"
 app = typer.Typer()
